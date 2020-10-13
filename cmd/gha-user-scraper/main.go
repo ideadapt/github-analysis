@@ -4,13 +4,11 @@ import (
 	"bufio"
 	"compress/gzip"
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 	"os/signal"
-	"path"
 	"strconv"
 	"strings"
 	"sync"
@@ -41,12 +39,11 @@ type fetchResponse struct {
 	user       *github.User
 }
 
-func writeUsers(ctx context.Context, wg *sync.WaitGroup, responses chan fetchResponse, db *githubanalysis.Database, jsonOutputPath string) {
+func writeUsers(ctx context.Context, wg *sync.WaitGroup, responses chan fetchResponse, db *githubanalysis.Database) {
 	defer wg.Done()
 
 	var f *os.File
 	var gz *gzip.Writer
-	written := 0
 
 Loop:
 	for {
@@ -75,39 +72,6 @@ Loop:
 				}
 
 				db.InsertUser(&response.statusCode, &time, response.user, true)
-			}
-
-			if response.user != nil && response.statusCode == 200 {
-				// TODO: move this into a class, create a 'ndjson' package ...
-				if f == nil {
-					now := time.Unix()
-					filename := path.Join(jsonOutputPath, fmt.Sprintf("github_users_%d.json.gz", now))
-					fmt.Printf("Writing json to %s\n", filename)
-
-					var err error
-					f, err = os.Create(filename)
-					if err != nil {
-						panic(err)
-					}
-					gz = gzip.NewWriter(f)
-				}
-
-				bytes, err := json.Marshal(response.user)
-				if err != nil {
-					panic(err) // TODO: is this valid?
-				}
-				gz.Write(bytes)
-				gz.Write([]byte("\n"))
-
-				// Reset the file if it gets too large
-				written += len(bytes) + 1
-				if written >= 100000000 {
-					gz.Close()
-					f.Close()
-					gz = nil
-					f = nil
-					written = 0
-				}
 			}
 		}
 	}
@@ -211,8 +175,8 @@ func queueUsers(ctx context.Context, db *githubanalysis.Database,
 
 	for scanner.Scan() {
 		tokens := strings.Fields(scanner.Text())
-		if len(tokens) == 3 {
-			userid, err := strconv.ParseInt(tokens[1], 10, 64)
+		if len(tokens) >= 5 {
+			userid, err := strconv.ParseInt(tokens[4], 10, 64)
 			if err != nil {
 				return err
 			}
@@ -223,14 +187,14 @@ func queueUsers(ctx context.Context, db *githubanalysis.Database,
 				}
 
 				if hasuser {
-					// fmt.Printf("Skipping %s\n", tokens[2])
+					//fmt.Printf("Skipping %s %s\n", tokens[4], tokens[5])
 					continue
 				}
 			}
 			select {
 			case <-ctx.Done():
 				return nil
-			case requests <- fetchRequest{userid, tokens[2]}:
+			case requests <- fetchRequest{userid, tokens[5]}:
 			}
 		}
 
@@ -239,11 +203,10 @@ func queueUsers(ctx context.Context, db *githubanalysis.Database,
 }
 
 func main() {
-	jsonpath := flag.String("jsonpath", "", "location of json files")
 	filename := flag.String("filename", "", "Filename to process")
 	refetch := flag.Bool("refetch", false, "Refetch users that have already been stored in the database")
 	flag.Parse()
-	if *filename == "" && *jsonpath == "" {
+	if *filename == "" {
 		flag.Usage()
 		os.Exit(1)
 	}
@@ -277,7 +240,7 @@ func main() {
 	// create a single goroutine for writing results to db/disk
 	var outputWG sync.WaitGroup
 	outputWG.Add(1)
-	go writeUsers(ctx, &outputWG, output, db, *jsonpath)
+	go writeUsers(ctx, &outputWG, output, db)
 
 	err = queueUsers(ctx, db, *filename, requests, *refetch)
 	if err != nil {

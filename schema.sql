@@ -1,6 +1,6 @@
 CREATE TABLE repos
 (
-  id integer PRIMARY KEY,
+  id bigint PRIMARY KEY,
   name varchar(200) NOT NULL,
   language varchar(50),
   description text,

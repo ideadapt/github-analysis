@@ -9,6 +9,7 @@ import (
 // Event holds parsed data about a single event from the Github Archive
 type Event struct {
 	Type         string
+	CreatedAt    string
 	RepoID       int64
 	RepoName     string
 	RepoLanguage string
@@ -38,6 +39,8 @@ func ParseEvent(data []byte) *Event {
 	// different JSON formats
 	// TODO: jsonparser.EachKey api might be faster?
 	eventType, _ := jsonparser.GetString(data, "type")
+
+	createdAt, _ := jsonparser.GetString(data, "created_at")
 
 	repo, err := jsonparser.GetString(data, "repo", "name")
 	if err != nil {
@@ -77,7 +80,7 @@ func ParseEvent(data []byte) *Event {
 		language, _ = jsonparser.GetString(data, "payload", "pull_request", "base", "repo", "language")
 	}
 
-	return &Event{Type: eventType, RepoName: repo, RepoID: repoID, RepoLanguage: language,
+	return &Event{Type: eventType, CreatedAt: createdAt, RepoName: repo, RepoID: repoID, RepoLanguage: language,
 		UserName: user, UserID: userID}
 }
 

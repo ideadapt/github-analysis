@@ -1,8 +1,9 @@
-package githubanalysis
+package github_analysis
 
 import (
 	"database/sql"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/benfred/github-analysis/config"
@@ -123,7 +124,7 @@ func (conn *Database) InsertRepo(statuscode *int, fetchtime *time.Time, repo *gi
 	}
 
 	owner := repo.GetOwner()
-	var ownerid *int
+	var ownerid *int64
 	if owner != nil {
 		ownerid = owner.ID
 		err := conn.InsertUser(nil, nil, owner, false)
@@ -132,7 +133,7 @@ func (conn *Database) InsertRepo(statuscode *int, fetchtime *time.Time, repo *gi
 		}
 	}
 
-	var parentid *int
+	var parentid *int64
 	parent := repo.GetParent()
 	if parent != nil {
 		// If we have a parent, insert the parent if its missing
@@ -140,7 +141,9 @@ func (conn *Database) InsertRepo(statuscode *int, fetchtime *time.Time, repo *gi
 		if err != nil {
 			return err
 		}
-		parentid = parent.ID
+		atoi, err := strconv.Atoi(*parent.ID)
+		m := int64(atoi)
+		parentid = &m
 	}
 
 	var modified *time.Time
@@ -223,7 +226,7 @@ func (conn *Database) InsertOrganizationMembers(orgid int64, orgname string, mem
 	// Insert a stub user if not already fetched for each user in the organization
 	// Note purposefully setting statuscode/fetched time to nil here to mark as not fetched
 	// and setting upsert flag to false to prevent overwriting good data
-	var memberids []int
+	var memberids []int64
 	for _, user := range members {
 		memberids = append(memberids, *user.ID)
 		conn.InsertUser(nil, nil, user, false)

@@ -27,7 +27,8 @@ func MaybeDownloadFile(basedir string, year int, month int, day int, hour int, d
 		return fmt.Errorf("'%s' is not a directory", dir)
 	}
 
-	filename := path.Join(dir, fmt.Sprintf("%d.json.gz", hour))
+	timestamp := time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC).Unix()
+	filename := path.Join(dir, fmt.Sprintf("%d_%d.json.gz", hour, timestamp))
 	if _, err := os.Stat(filename); err != nil {
 		if os.IsNotExist(err) {
 			url := fmt.Sprintf("http://data.githubarchive.org/%04d-%02d-%02d-%d.json.gz", year, month, day, hour)
@@ -75,7 +76,7 @@ func DownloadFiles(pathname string) error {
 
 	fmt.Printf("year %d month %d day %d hour %d\n", now.Year(), now.Month(), now.Day(), now.Hour())
 	// for year := 2012; year <= now.Year(); year++ {
-	for year := now.Year(); year >= 2011; year-- {
+	for year := now.Year(); year >= 2016; year-- {
 		endMonth := time.December
 		if year == now.Year() {
 			endMonth = now.Month()

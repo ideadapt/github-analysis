@@ -54,13 +54,14 @@ func analyzeDay(pathname string) error {
 					forkName = name
 				}
 
-				fmt.Fprintf(output, "%s\t%d\t%s\t%s\t%d\t%s\t%s\t%s\n",
+				fmt.Fprintf(output, "%s\t%s\t%d\t%s\t%d\t%s\t%s\t%s\t%s\n",
 					event.Type,
+					event.CreatedAt,
 					event.RepoID,
 					event.RepoName,
-					event.RepoLanguage,
 					event.UserID,
 					event.UserName,
+					event.RepoLanguage,
 					forkID,
 					forkName)
 			}
